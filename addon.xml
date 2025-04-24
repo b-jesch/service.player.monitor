@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<addon id="service.player.monitor" name="Player Monitor" version="1.0.0" provider-name="Birger Jesch">
+	<requires>
+		<import addon="xbmc.python" version="3.0.0"/>
+	</requires>
+	<extension point="xbmc.service" library="default.py" start="login"/>
+	<extension point="xbmc.addon.metadata">
+		<summary lang="en">Player Monitor - Observe Player Status of Kodi</summary>
+		<description lang="en">Player Monitor - Monitoring video player events with the xbmc.Monitor class. Events are logged into files within the addon_data/service.player.monitor folder.</description>
+		<platform>all</platform>
+		<license>GNU GENERAL PUBLIC LICENSE. Version 2, June 1991</license>
+		<email/>
+		<source>https://github.com/b-jesch/service.player.monitor</source>
+		<assets>
+			<icon>icon.png</icon>
+		</assets>
+	</extension>
+</addon>
