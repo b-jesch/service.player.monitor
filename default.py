@@ -56,6 +56,8 @@ class EventLogger(xbmc.Monitor):
         xbmc.Monitor.__init__(self)
         self.playerStatus = None
         self.lastPlayed = None
+        self.attemptsToStart = 0
+        self.giveUp = False
 
         NL.log('Event logger started')
         NL.log('Logging into %s' % log_file, writeout=False)
@@ -83,25 +85,30 @@ class EventLogger(xbmc.Monitor):
 
 
     def logEvents(self):
-        attempts = 0
         while not self.abortRequested():
 
             # try to restart player if status is 'stop'
-            if (self.playerStatus == 'stop' or not xbmc.getCondVisibility('Player.Playing')) and self.lastPlayed is not None:
-                if attempts < 10:
-                    attempts += 1
+            if ((self.playerStatus == 'stop' or
+                not xbmc.getCondVisibility('Player.Playing')) and self.lastPlayed is not None and self.lastPlayed.get('id', None) is not None):
+                if self.attemptsToStart < 3:
                     query = {'method': 'Player.Open', 'params': {'item': {'channelid': self.lastPlayed['id']}}}
                     res = jsonrpc(query)
-                    if 'result' in res and res['result'] == 'OK':
-                        NL.log('Player (re)opened: %s' % self.lastPlayed['title'])
-                        attempts = 0
+                    xbmc.sleep(2000)
+                    if 'result' in res and res['result'] == 'OK' and not xbmc.getCondVisibility('Player.Playing'):
+                        self.attemptsToStart += 1
+                        NL.log('Player (re)opened %s time(s): %s but did\'nt play yet' % (self.attemptsToStart, self.lastPlayed.get('title', 'unknown')))
+                    elif 'result' in res and res['result'] == 'OK' and xbmc.getCondVisibility('Player.Playing'):
+                        NL.log('Player successfully reopened: %s' % self.lastPlayed.get('title', 'unknown'))
+                        self.attemptsToStart = 0
+                        self.giveUp = False
                     else:
-                        NL.log('Could not open Channel: %s' % self.lastPlayed['title'])
+                        NL.log('Could not open Channel: %s' % self.lastPlayed.get('title', 'unknown'))
                 else:
-                    NL.log('Tried %s times to restart channel, giving up' % attempts)
-                    self.waitForAbort(30)
-            else:
-                    self.waitForAbort(30)
+                    if not self.giveUp:
+                        NL.log('%s attempts restarting player on channel %s, giving up' % (self.attemptsToStart, self.lastPlayed.get('title', 'unknown')))
+                        self.giveUp = True
+
+            self.waitForAbort(60)
 
         NL.log('Event logger stopped')
 
