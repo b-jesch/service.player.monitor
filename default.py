@@ -57,7 +57,7 @@ class EventLogger(xbmc.Monitor):
         self.playerStatus = None
         self.lastPlayed = None
         self.attemptsToStart = 0
-        self.giveUp = False
+        self.givenUp = False
 
         NL.log('Event logger started')
         NL.log('Logging into %s' % log_file, writeout=False)
@@ -100,13 +100,13 @@ class EventLogger(xbmc.Monitor):
                     elif 'result' in res and res['result'] == 'OK' and xbmc.getCondVisibility('Player.Playing'):
                         NL.log('Player successfully reopened: %s' % self.lastPlayed.get('title', 'unknown'))
                         self.attemptsToStart = 0
-                        self.giveUp = False
+                        self.givenUp = False
                     else:
                         NL.log('Could not open Channel: %s' % self.lastPlayed.get('title', 'unknown'))
                 else:
-                    if not self.giveUp:
+                    if not self.givenUp:
                         NL.log('%s attempts restarting player on channel %s, giving up' % (self.attemptsToStart, self.lastPlayed.get('title', 'unknown')))
-                        self.giveUp = True
+                        self.givenUp = True
 
             self.waitForAbort(60)
 
