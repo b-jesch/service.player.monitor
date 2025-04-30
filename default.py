@@ -80,34 +80,40 @@ class EventLogger(xbmc.Monitor):
             self.playerStatus = 'stop'
             self.lastPlayed = self.getPlayerProps(data)
             NL.log('Player stopped: %s' % data)
+            self.playerRestart()
 
         else: NL.log('Event discarded: %s' % method, writeout=False)
+
+    def playerRestart(self):
+        self.waitForAbort(30)
+        if self.abortRequested() or self.givenUp: return
+
+        if not xbmc.getCondVisibility('Player.Playing') and self.lastPlayed is not None and self.lastPlayed.get('id', None) is not None:
+            if self.attemptsToStart < 3:
+                query = {'method': 'Player.Open', 'params': {'item': {'channelid': self.lastPlayed['id']}}}
+                res = jsonrpc(query)
+                xbmc.sleep(2000)
+
+                if 'result' in res and res['result'] == 'OK' and xbmc.getCondVisibility('Player.Playing'):
+                    NL.log('Player successfully reopened: %s' % self.lastPlayed.get('title', 'unknown'))
+                    self.attemptsToStart = 0
+                    self.givenUp = False
+                    return
+
+                elif 'result' in res and res['result'] == 'OK' and not xbmc.getCondVisibility('Player.Playing'):
+                    self.attemptsToStart += 1
+                    NL.log('Player (re)opened %s time(s): %s but did\'nt play yet' % (self.attemptsToStart, self.lastPlayed.get('title', 'unknown')))
+
+                else:
+                    NL.log('Could not open Channel: %s' % self.lastPlayed.get('title', 'unknown'))
+
+                if not self.givenUp:
+                    NL.log('%s attempts restarting player on channel %s, giving up' % (self.attemptsToStart, self.lastPlayed.get('title', 'unknown')))
+                    self.givenUp = True
 
 
     def logEvents(self):
         while not self.abortRequested():
-
-            # try to restart player if status is 'stop'
-            if ((self.playerStatus == 'stop' or
-                not xbmc.getCondVisibility('Player.Playing')) and self.lastPlayed is not None and self.lastPlayed.get('id', None) is not None):
-                if self.attemptsToStart < 3:
-                    query = {'method': 'Player.Open', 'params': {'item': {'channelid': self.lastPlayed['id']}}}
-                    res = jsonrpc(query)
-                    xbmc.sleep(2000)
-                    if 'result' in res and res['result'] == 'OK' and not xbmc.getCondVisibility('Player.Playing'):
-                        self.attemptsToStart += 1
-                        NL.log('Player (re)opened %s time(s): %s but did\'nt play yet' % (self.attemptsToStart, self.lastPlayed.get('title', 'unknown')))
-                    elif 'result' in res and res['result'] == 'OK' and xbmc.getCondVisibility('Player.Playing'):
-                        NL.log('Player successfully reopened: %s' % self.lastPlayed.get('title', 'unknown'))
-                        self.attemptsToStart = 0
-                        self.givenUp = False
-                    else:
-                        NL.log('Could not open Channel: %s' % self.lastPlayed.get('title', 'unknown'))
-                else:
-                    if not self.givenUp:
-                        NL.log('%s attempts restarting player on channel %s, giving up' % (self.attemptsToStart, self.lastPlayed.get('title', 'unknown')))
-                        self.givenUp = True
-
             self.waitForAbort(60)
 
         NL.log('Event logger stopped')
