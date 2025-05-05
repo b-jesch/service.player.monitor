@@ -14,10 +14,10 @@ if not xbmcvfs.exists(log_path): xbmcvfs.mkdirs(log_path)
 
 # determine next log file name
 subversion = 1
-while 0 < subversion < 100:
+while True:
     log_file = os.path.join(log_path, 'monitor.log.%s' % str(subversion))
     if not xbmcvfs.exists(log_file): break
-    subversion = (subversion + 1) % 100
+    subversion = (subversion + 1)
 
 player = xbmc.Player
 
