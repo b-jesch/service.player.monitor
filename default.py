@@ -1,9 +1,9 @@
-import xbmc
 import xbmcaddon
 import xbmcvfs
 import os
 from datetime import datetime
-import json
+
+from tools import *
 
 addon = xbmcaddon.Addon()
 addon_id = addon.getAddonInfo('id')
@@ -20,11 +20,6 @@ while True:
     subversion = (subversion + 1)
 
 player = xbmc.Player
-
-def jsonrpc(query):
-    querystring = {"jsonrpc": "2.0", "id": 1}
-    querystring.update(query)
-    return json.loads(xbmc.executeJSONRPC(json.dumps(querystring)))
 
 
 class NotificationLogger(object):
@@ -54,13 +49,17 @@ NL = NotificationLogger()
 class EventLogger(xbmc.Monitor):
     def __init__(self):
         xbmc.Monitor.__init__(self)
-        self.playerStatus = None
         self.lastPlayed = None
         self.attemptsToStart = 0
         self.givenUp = False
 
         NL.log('Event logger started')
         NL.log('Logging into %s' % log_file, writeout=False)
+
+    def resetPlayerStates(self, message):
+        self.attemptsToStart = 1
+        self.givenUp = False
+        NL.log(message)
 
     def getPlayerProps(self, data):
         res = json.loads(data)
@@ -69,15 +68,15 @@ class EventLogger(xbmc.Monitor):
 
     def onNotification(self, sender, method, data):
         if method == 'Player.OnPlay':
-            self.playerStatus = 'play'
             self.lastPlayed = self.getPlayerProps(data)
-            NL.log('Player started: %s' % data)
+            xbmc.sleep(2000)
+            if xbmc.getCondVisibility('Player.Playing'): self.resetPlayerStates('Player started: %s' % data)
+            clearProp('player.monitor.run')
 
         elif method == 'Player.OnPause': NL.log('Player paused: %s' % data)
         elif method == 'Player.OnResume': NL.log('Player resumed: %s' % data)
 
         elif method == 'Player.OnStop':
-            self.playerStatus = 'stop'
             self.lastPlayed = self.getPlayerProps(data)
             NL.log('Player stopped: %s' % data)
             self.playerRestart()
@@ -87,21 +86,21 @@ class EventLogger(xbmc.Monitor):
     def playerRestart(self):
         self.waitForAbort(30)
         if self.abortRequested() or self.givenUp: return
+        if getProp('player.monitor.run') is not None and not getProp('player.monitor.run'):
+            self.lastPlayed = None
+            NL.log('Player Monitoring interrupted by User')
 
         if not xbmc.getCondVisibility('Player.Playing') and self.lastPlayed is not None and self.lastPlayed.get('id', None) is not None:
-            if self.attemptsToStart < 3:
+            if self.attemptsToStart < 4:
                 query = {'method': 'Player.Open', 'params': {'item': {'channelid': self.lastPlayed['id']}}}
                 res = jsonrpc(query)
                 xbmc.sleep(2000)
 
                 if 'result' in res and res['result'] == 'OK' and xbmc.getCondVisibility('Player.Playing'):
-                    NL.log('Player successfully reopened: %s' % self.lastPlayed.get('title', 'unknown'))
-                    self.attemptsToStart = 0
-                    self.givenUp = False
+                    self.resetPlayerStates('Player successfully reopened: %s' % self.lastPlayed.get('title', 'unknown'))
                     return
 
                 elif 'result' in res and res['result'] == 'OK' and not xbmc.getCondVisibility('Player.Playing'):
-                    self.attemptsToStart += 1
                     NL.log('Player (re)opened %s time(s): %s but did\'nt play yet' % (self.attemptsToStart, self.lastPlayed.get('title', 'unknown')))
 
                 else:
@@ -110,7 +109,8 @@ class EventLogger(xbmc.Monitor):
                 if not self.givenUp:
                     NL.log('%s attempts restarting player on channel %s, giving up' % (self.attemptsToStart, self.lastPlayed.get('title', 'unknown')))
                     self.givenUp = True
-
+            else:
+                self.attemptsToStart += 1
 
     def logEvents(self):
         while not self.abortRequested():
@@ -122,4 +122,5 @@ class EventLogger(xbmc.Monitor):
 if __name__ == '__main__':
     Logger = EventLogger()
     Logger.logEvents()
+    clearProp('player.monitor.run')
     del Logger
