@@ -15,7 +15,7 @@ class NotificationLogger(object):
     def file_logger(self, msg):
         if getProp('player.monitor.log') is not None and getProp('player.monitor.log'):
             self.logFile = getNextLogfileName(log_path)
-            clearProp(getProp('player.monitor.log'))
+            clearProp('player.monitor.log')
 
         with open(self.logFile, 'a') as file: file.write(datetime.now().strftime('%d.%m.%Y %H:%M:%S') + ': ' + msg + "\n")
         file.close()
@@ -43,7 +43,7 @@ class EventLogger(xbmc.Monitor):
         clearProp('player.monitor.run')
 
         NL.log('Event logger started')
-        NL.log('Logging into %s' % log_file, writeout=False)
+        NL.log('Logging into %s' % NL.logFile, writeout=False)
 
     def resetPlayerStates(self, message):
         self.attemptsToStart = 1
