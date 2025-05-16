@@ -1,23 +1,7 @@
-import xbmcaddon
-import xbmcvfs
-import os
+from tools import *
 from datetime import datetime
 
-from tools import *
-
-addon = xbmcaddon.Addon()
-addon_id = addon.getAddonInfo('id')
-addon_version = addon.getAddonInfo('version')
-log_path = xbmcvfs.translatePath(addon.getAddonInfo('profile'))
-
 if not xbmcvfs.exists(log_path): xbmcvfs.mkdirs(log_path)
-
-# determine next log file name
-subversion = 1
-while True:
-    log_file = os.path.join(log_path, 'monitor.log.%s' % str(subversion))
-    if not xbmcvfs.exists(log_file): break
-    subversion = (subversion + 1)
 
 player = xbmc.Player
 
@@ -26,9 +10,13 @@ class NotificationLogger(object):
     def __init__(self):
         self.repeats = 0
         self.lastMsg = None
-        self.logFile = log_file
+        self.logFile = getNextLogfileName(log_path)
 
     def file_logger(self, msg):
+        if getProp('player.monitor.log') is not None and getProp('player.monitor.log'):
+            self.logFile = getNextLogfileName(log_path)
+            clearProp(getProp('player.monitor.log'))
+
         with open(self.logFile, 'a') as file: file.write(datetime.now().strftime('%d.%m.%Y %H:%M:%S') + ': ' + msg + "\n")
         file.close()
 
@@ -52,6 +40,7 @@ class EventLogger(xbmc.Monitor):
         self.lastPlayed = None
         self.attemptsToStart = 0
         self.givenUp = False
+        clearProp('player.monitor.run')
 
         NL.log('Event logger started')
         NL.log('Logging into %s' % log_file, writeout=False)
@@ -86,7 +75,7 @@ class EventLogger(xbmc.Monitor):
     def playerRestart(self):
         self.waitForAbort(30)
         if self.abortRequested() or self.givenUp: return
-        if getProp('player.monitor.run') is not None and not getProp('player.monitor.run'):
+        if getProp('player.monitor.run') is not None and getProp('player.monitor.run'):
             self.lastPlayed = None
             NL.log('Player Monitoring interrupted by User')
 

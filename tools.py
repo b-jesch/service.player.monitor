@@ -1,6 +1,25 @@
 import xbmc
 import xbmcgui
+import xbmcaddon
+import xbmcvfs
+
 import json
+import os
+
+addon = xbmcaddon.Addon()
+addon_id = addon.getAddonInfo('id')
+addon_name = addon.getAddonInfo('name')
+addon_version = addon.getAddonInfo('version')
+log_path = os.path.join(xbmcvfs.translatePath(addon.getAddonInfo('profile')), 'log')
+
+def getNextLogfileName(log_path):
+    # determine next log file name
+    subversion = 1
+    while True:
+        log_file = os.path.join(log_path, 'monitor.log.%s' % str(subversion))
+        if not xbmcvfs.exists(log_file): return log_file
+        subversion = (subversion + 1)
+        return None
 
 def setProp(key, value):
     xbmcgui.Window(10000).setProperty(str(key), str(value))
