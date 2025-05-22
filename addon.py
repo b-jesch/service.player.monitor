@@ -19,5 +19,5 @@ elif menu == 2:
     dirs, files = xbmcvfs.listdir(log_path)
     if len(files) > 0:
         for file in files: xbmcvfs.delete(os.path.join(log_path, file))
-        xbmcgui.Dialog().notification(addon_name, 'All Protocol Filess deleted')
+        xbmcgui.Dialog().notification(addon_name, 'All Protocol Files deleted')
         setProp('player.monitor.log', 'True')
